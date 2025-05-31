@@ -2,7 +2,7 @@ import aiohttp
 from .session_abc import SessionABC
 
 
-class AiohttpSession(SessionABC[aiohttp.ClientSession]):
+class BaseClientSession(SessionABC[aiohttp.ClientSession]):
     def get(self) -> 'aiohttp.ClientSession':
         if not self.session or self.session.closed:
             self.session = aiohttp.ClientSession(

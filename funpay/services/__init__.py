@@ -1,2 +1,2 @@
-from .account_service import AccountService
-from .lot_service import LotService
+from .lots_service import LotsService
+from .reviews_service import ReviewsService
