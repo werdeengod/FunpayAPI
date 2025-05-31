@@ -1,14 +1,14 @@
 from typing import TYPE_CHECKING
 
-from funpay.html import LotsHtmlParser
-from .base_service import BaseService
+from funpay.parsers.html import AccountParserLots, LotsTradeParserGameData
+from .base import BaseService
 
 if TYPE_CHECKING:
-    from funpay.models import Lot
+    from funpay.types import Lot
 
 
 class LotsService(BaseService):
-    """Service for managing FunPay lots and bump operations.
+    """Manager for managing FunPay lots and bump operations.
 
     Provides functionality to:
     - Retrieve current user's lots
@@ -16,11 +16,11 @@ class LotsService(BaseService):
     - Track operation statuses
 
     Args:
-        requester (Requester): Authenticated HTTP requester instance
+        client (BaseClient): Authenticated HTTP requester instance
         account (Account): User account containing ID and auth data
 
     Attributes:
-        requester (Requester): HTTP client for making requests
+        client (BaseClient): HTTP services for making requests
         account (Account): Authenticated user account info
     """
 
@@ -35,8 +35,8 @@ class LotsService(BaseService):
 
         """
 
-        html = await self.requester.load_users_page(self.account.id)
-        return LotsHtmlParser(html).parse()
+        html = await self.client.load_users_page_html(self.account.id)
+        return AccountParserLots(html).parse()
 
     async def up(self) -> dict:
         """Performs bump (up) operation for all available lots.
@@ -52,15 +52,15 @@ class LotsService(BaseService):
             Example: {'123': '1', '456': '0'}
         """
 
-        users_html = await self.requester.load_users_page(self.account.id)
-        nodes = LotsHtmlParser(users_html).extract_nodes_id()
+        users_html = await self.client.load_users_page_html(self.account.id)
+        nodes = AccountParserLots(users_html).extract_nodes_id()
         state = {}
 
         for node_id in nodes:
-            lots_html = await self.requester.load_lots_page(node_id)
-            game_id = LotsHtmlParser(lots_html).extract_game_id()
+            lots_html = await self.client.load_lots_trade_page_html(node_id)
+            game_id = LotsTradeParserGameData(lots_html).parse()
 
-            response = await self.requester(
+            response = await self.client.request(
                 method='POST',
                 url='/lots/raise',
                 data={

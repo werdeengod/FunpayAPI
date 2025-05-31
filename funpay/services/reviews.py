@@ -1,24 +1,24 @@
 from typing import TYPE_CHECKING
 
-from funpay.html import ReviewsHtmlParser
-from .base_service import BaseService
+from funpay.parsers.html import AccountParserReviews
+from .base import BaseService
 
 if TYPE_CHECKING:
-    from funpay.models import Review
+    from funpay.types import Review
 
 
 class ReviewsService(BaseService):
-    """Service for retrieving and managing user reviews on FunPay.
+    """Manager for retrieving and managing user reviews on FunPay.
 
     Provides methods to fetch and parse review data from user profiles.
     Handles all review-related operations including retrieval and parsing.
 
     Args:
-        requester (Requester): Authenticated HTTP requester instance
+        client (BaseClient): Authenticated HTTP requester instance
         account (Account): User account containing ID and auth data
 
     Attributes:
-        requester (Requester): HTTP client for making requests
+        client (BaseClient): HTTP services for making requests
         account (Account): Authenticated user account info
     """
 
@@ -36,5 +36,5 @@ class ReviewsService(BaseService):
 
         """
 
-        users_html = await self.requester.load_users_page(self.account.id)
-        return ReviewsHtmlParser(users_html).parse()
+        users_html = await self.client.load_users_page_html(self.account.id)
+        return AccountParserReviews(users_html).parse()

@@ -1,6 +1,7 @@
 from funpay import FunpayAPI
+import asyncio
 
-golden_key = ''
+golden_key = '8per55gsho6m8vmiqho4htw9iylaq0aw'
 
 
 async def up_lots():
@@ -19,3 +20,11 @@ async def get_reviews():
     async with FunpayAPI(golden_key) as funpay:
         reviews = await funpay.reviews.get()
         print(reviews)
+
+
+async def main():
+    api = await FunpayAPI(golden_key).login()
+    await api.message_listener()
+
+
+asyncio.run(up_lots())

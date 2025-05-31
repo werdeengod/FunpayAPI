@@ -1,15 +1,15 @@
 from typing import Optional, TYPE_CHECKING
 
-from funpay.requester import Requester
+from funpay.http import AioHttpClient, BaseClient
 from funpay.services import LotsService, ReviewsService
-from funpay.html import AccountHtmlParser
+from funpay.parsers.html import AccountParserData
 
 if TYPE_CHECKING:
-    from funpay.models import Account
+    from funpay.types import Account
 
 
 class FunpayAPI:
-    """Main client for interacting with FunPay API.
+    """Main services for interacting with FunPay API.
 
     Provides a comprehensive interface for FunPay operations including:
     - Account management
@@ -19,12 +19,12 @@ class FunpayAPI:
 
     Args:
         golden_key (str): Account authentication key (golden_key from cookies)
-        requester (Optional[Requester]): Custom HTTP client instance. If None,
+        client (Optional[BaseClient]): Custom HTTP services instance. If None,
             a default Requester will be initialized.
 
     Attributes:
         golden_key (str): Stored authentication key
-        _requester (Requester): HTTP client for making requests
+        _client (BaseClient): HTTP services for making requests
         _account (Optional[Account]): Cached account data
 
     Note:
@@ -32,17 +32,17 @@ class FunpayAPI:
         after calling login() method.
     """
 
-    def __init__(self, golden_key: str, *, requester: Optional[Requester] = None):
+    def __init__(self, golden_key: str, *, client: Optional['BaseClient'] = None):
         self.golden_key = golden_key
 
-        self._requester = requester if requester else Requester(golden_key)
+        self._client = client if client else AioHttpClient(golden_key)
         self._account = None
 
     async def __aenter__(self) -> 'FunpayAPI':
         return await self.login()
 
     async def __aexit__(self, exc_type, exc_val, exc_tb):
-        await self._requester.session.close()
+        await self._client.session.close()
 
     @property
     def account(self) -> 'Account':
@@ -50,11 +50,11 @@ class FunpayAPI:
 
     @property
     def lots(self) -> 'LotsService':
-        return LotsService(self._account, self._requester)
+        return LotsService(self._account, self._client)
 
     @property
     def reviews(self) -> 'ReviewsService':
-        return ReviewsService(self._account, self._requester)
+        return ReviewsService(self._account, self._client)
 
     async def login(self) -> 'FunpayAPI':
         """Authenticates the user and initializes account data.
@@ -68,11 +68,17 @@ class FunpayAPI:
             FunpayAPI: Returns self for method chaining
         """
 
-        response = await self._requester(
+        response = await self._client.request(
             method='GET',
             url='/'
         )
 
         html = await response.text()
-        self._account = AccountHtmlParser(html).parse()
+        self._account = AccountParserData(html).parse()
         return self
+
+    async def message_listener(self):
+        pass
+
+    async def order_listener(self):
+        pass
