@@ -1,6 +1,8 @@
 from typing import TYPE_CHECKING
 
-from funpay.parsers.html import AccountParserLots, LotsTradeParserGameData
+import asyncio
+
+from funpay.parsers.html import AccountParserNodes, AccountParserLots, LotsTradeParserGameData
 from .base import BaseService
 
 if TYPE_CHECKING:
@@ -8,20 +10,13 @@ if TYPE_CHECKING:
 
 
 class LotsService(BaseService):
-    """Manager for managing FunPay lots and bump operations.
+    """Service for managing FunPay lots and bump operations.
 
     Provides functionality to:
     - Retrieve current user's lots
     - Perform lot bumping (up) operations
     - Track operation statuses
 
-    Args:
-        client (BaseClient): Authenticated HTTP requester instance
-        account (Account): User account containing ID and auth data
-
-    Attributes:
-        client (BaseClient): HTTP services for making requests
-        account (Account): Authenticated user account info
     """
 
     async def get(self) -> list['Lot']:
@@ -35,8 +30,8 @@ class LotsService(BaseService):
 
         """
 
-        html = await self.client.load_users_page_html(self.account.id)
-        return AccountParserLots(html).parse()
+        lots = await self.client.request(parser=AccountParserLots).fetch_user_data(self.account.id)
+        return lots
 
     async def up(self) -> dict:
         """Performs bump (up) operation for all available lots.
@@ -52,24 +47,13 @@ class LotsService(BaseService):
             Example: {'123': '1', '456': '0'}
         """
 
-        users_html = await self.client.load_users_page_html(self.account.id)
-        nodes = AccountParserLots(users_html).extract_nodes_id()
-        state = {}
+        async def process_node(node_id: str) -> None:
+            game_id = await self.client.request(parser=LotsTradeParserGameData).fetch_lots_trade_data(node_id)
+            data = await self.client.request().send_raise_request(game_id, node_id)
 
-        for node_id in nodes:
-            lots_html = await self.client.load_lots_trade_page_html(node_id)
-            game_id = LotsTradeParserGameData(lots_html).parse()
+            return data
 
-            response = await self.client.request(
-                method='POST',
-                url='/lots/raise',
-                data={
-                    "game_id": game_id,
-                    "node_id": node_id
-                }
-            )
+        nodes = await self.client.request(parser=AccountParserNodes).fetch_user_data(self.account.id)
+        results = await asyncio.gather(*[process_node(node) for node in nodes])
 
-            data = await response.json()
-            state[node_id] = data['error']
-
-        return state
+        return results

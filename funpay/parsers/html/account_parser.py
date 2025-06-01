@@ -30,11 +30,11 @@ class AccountParserData(BaseHtmlParser):
         )
 
 
-class AccountParserLots(BaseHtmlParser):
+class AccountParserNodes(BaseHtmlParser):
     def _extract_offer_container(self, class_name: str) -> list['Tag']:
         return self.soup.find_all("div", {"class": class_name})
 
-    def extract_nodes_id(self) -> list[str]:
+    def parse(self) -> list[str]:
         offers_soup = self._extract_offer_container("offer-list-title-container")
         nodes = []
 
@@ -43,6 +43,11 @@ class AccountParserLots(BaseHtmlParser):
             nodes.append(category_id)
 
         return nodes
+
+
+class AccountParserLots(BaseHtmlParser):
+    def _extract_offer_container(self, class_name: str) -> list['Tag']:
+        return self.soup.find_all("div", {"class": class_name})
 
     def parse(self) -> list['Lot']:
         offers_soup = self._extract_offer_container("offer")

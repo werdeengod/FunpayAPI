@@ -1,9 +1,9 @@
-from typing import TypeVar, Generic, Literal, Any
+from typing import TypeVar, Generic, Type, Optional, TYPE_CHECKING
 from abc import ABC, abstractmethod
 
-
-from fake_useragent import FakeUserAgent
-from aiocache import cached
+if TYPE_CHECKING:
+    from funpay.parsers import ABCParser
+    from .request import Request
 
 
 T = TypeVar('T')
@@ -50,41 +50,21 @@ class BaseClient(ABC, Generic[T]):
         """Cleanly shutdown the http."""
         pass
 
-    def _get_headers(self, method: Literal["POST", "GET"]) -> dict:
-        base_headers = {
-            "User-Agent": FakeUserAgent().random,
-            "Cookie": f"golden_key={self.golden_key}",
-            "Accept": "application/json, text/html",
-            "Connection": "keep-alive"
-        }
-
-        if method.upper() == "POST":
-            base_headers.update({
-                "Content-Type": "application/x-www-form-urlencoded",
-                "X-Requested-With": "XMLHttpRequest",
-                "Origin": self.BASE_URL,
-                "Referer": f"{self.BASE_URL}/"
-            })
-
-        return base_headers
-
     @abstractmethod
-    async def request(self, method: Literal['GET', 'POST'], url: str, **kwargs) -> Any:
-        """Execute authenticated HTTP request (main interface).
+    def request(self, *, parser: Optional[Type['ABCParser']] = None) -> 'Request':
+        """Factory method for creating Request instances.
+
+        Implementations should return a properly configured Request handler
+        with the specified parser.
 
         Args:
-            method: HTTP method ("GET" or "POST")
-            url: Endpoint URL (relative to core)
-            **kwargs: Additional arguments for aiohttp request
+            parser: Optional parser class for automatic response processing
 
         Returns:
-            aiohttp.ClientResponse: Response object
-
-        Raises:
-            APIError: For status codes >= 400 (via APIErrorFactory)
+            Request: Configured request handler instance
 
         Note:
-            Responses are cached for 10 seconds (TTL) to prevent
-            duplicate requests to the same endpoint.
+            This is the primary entry point for all API requests.
+            Concrete clients must implement this method.
         """
         pass

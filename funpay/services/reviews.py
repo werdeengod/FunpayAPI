@@ -8,18 +8,11 @@ if TYPE_CHECKING:
 
 
 class ReviewsService(BaseService):
-    """Manager for retrieving and managing user reviews on FunPay.
+    """Service for retrieving and managing user reviews on FunPay.
 
     Provides methods to fetch and parse review data from user profiles.
     Handles all review-related operations including retrieval and parsing.
 
-    Args:
-        client (BaseClient): Authenticated HTTP requester instance
-        account (Account): User account containing ID and auth data
-
-    Attributes:
-        client (BaseClient): HTTP services for making requests
-        account (Account): Authenticated user account info
     """
 
     async def get(self) -> list['Review']:
@@ -36,5 +29,5 @@ class ReviewsService(BaseService):
 
         """
 
-        users_html = await self.client.load_users_page_html(self.account.id)
-        return AccountParserReviews(users_html).parse()
+        reviews = await self.client.request(parser=AccountParserReviews).fetch_user_data(self.account.id)
+        return reviews
