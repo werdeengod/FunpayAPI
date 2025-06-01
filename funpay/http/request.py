@@ -116,7 +116,7 @@ class Request(Generic[T]):
 
         return parse
 
-    async def auth(self) -> 'Account':
+    async def fetch_account(self) -> 'Account':
         """Authenticates and fetches current user account data.
 
         Returns:

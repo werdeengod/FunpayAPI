@@ -68,7 +68,7 @@ class FunpayAPI:
             FunpayAPI: Returns self for method chaining
         """
 
-        self._account = await self._client.request(parser=AccountParserData).auth()
+        self._account = await self._client.request(parser=AccountParserData).fetch_account()
         return self
 
     async def message_listener(self):
