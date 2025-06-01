@@ -50,8 +50,9 @@ class BaseClient(ABC, Generic[T]):
         """Cleanly shutdown the http."""
         pass
 
+    @property
     @abstractmethod
-    def request(self, *, parser: Optional[Type['ABCParser']] = None) -> 'Request':
+    def request(self) -> 'Request':
         """Factory method for creating Request instances.
 
         Implementations should return a properly configured Request handler

@@ -1,8 +1,8 @@
-from typing import Optional, TYPE_CHECKING
+from typing import Optional, TYPE_CHECKING, Union
 
 from funpay.http import AioHttpClient, BaseClient
-from funpay.services import LotsService, ReviewsService
-from funpay.parsers.html import AccountParserData
+from funpay.services import LotsService, ReviewsService, ChatService
+from funpay.parsers.html import FunpayUserProfileParser
 
 if TYPE_CHECKING:
     from funpay.types import Account
@@ -32,7 +32,7 @@ class FunpayAPI:
         after calling login() method.
     """
 
-    def __init__(self, golden_key: str, *, client: Optional['BaseClient'] = None):
+    def __init__(self, golden_key: Optional[str] = None, *, client: Optional['BaseClient'] = None):
         self.golden_key = golden_key
 
         self._client = client if client else AioHttpClient(golden_key)
@@ -45,8 +45,12 @@ class FunpayAPI:
         await self._client.session.close()
 
     @property
-    def account(self) -> 'Account':
+    def account(self) -> Union['Account', None]:
         return self._account
+
+    @property
+    def client(self) -> Union['BaseClient', None]:
+        return self._client
 
     @property
     def lots(self) -> 'LotsService':
@@ -55,6 +59,10 @@ class FunpayAPI:
     @property
     def reviews(self) -> 'ReviewsService':
         return ReviewsService(self._account, self._client)
+
+    @property
+    def chat(self) -> 'ChatService':
+        return ChatService(self._account, self._client)
 
     async def login(self) -> 'FunpayAPI':
         """Authenticates the user and initializes account data.
@@ -68,7 +76,9 @@ class FunpayAPI:
             FunpayAPI: Returns self for method chaining
         """
 
-        self._account = await self._client.request(parser=AccountParserData).fetch_account()
+        html = await self._client.request.fetch_main_page()
+        self._account = FunpayUserProfileParser(html).parse()
+
         return self
 
     async def message_listener(self):

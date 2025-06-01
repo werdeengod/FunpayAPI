@@ -1,7 +1,7 @@
 from .base_html_parser import BaseHtmlParser
 
 
-class LotsTradeParserGameData(BaseHtmlParser):
+class FunpayLotGameIdParser(BaseHtmlParser):
     def _extract_page_content(self):
         return self.soup.find("div", {"class": "page-content"})
 

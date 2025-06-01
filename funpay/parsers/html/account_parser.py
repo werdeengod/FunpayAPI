@@ -8,7 +8,7 @@ if TYPE_CHECKING:
     from bs4 import Tag
 
 
-class AccountParserData(BaseHtmlParser):
+class FunpayUserProfileParser(BaseHtmlParser):
     def _extract_account_data(self) -> dict:
         return json.loads(self.soup.find("body")["data-app-data"])
 
@@ -30,7 +30,7 @@ class AccountParserData(BaseHtmlParser):
         )
 
 
-class AccountParserNodes(BaseHtmlParser):
+class FunpayUserNodeIdsParser(BaseHtmlParser):
     def _extract_offer_container(self, class_name: str) -> list['Tag']:
         return self.soup.find_all("div", {"class": class_name})
 
@@ -45,7 +45,7 @@ class AccountParserNodes(BaseHtmlParser):
         return nodes
 
 
-class AccountParserLots(BaseHtmlParser):
+class FunpayUserLotsParser(BaseHtmlParser):
     def _extract_offer_container(self, class_name: str) -> list['Tag']:
         return self.soup.find_all("div", {"class": class_name})
 
@@ -75,7 +75,7 @@ class AccountParserLots(BaseHtmlParser):
         return lots
 
 
-class AccountParserReviews(BaseHtmlParser):
+class FunpayUserReviewsParser(BaseHtmlParser):
     def _extract_reviews_container(self) -> list['Tag']:
         return self.soup.find_all("div", {"class": "review-container"})
 

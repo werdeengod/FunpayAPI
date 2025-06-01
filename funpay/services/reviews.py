@@ -1,6 +1,6 @@
 from typing import TYPE_CHECKING
 
-from funpay.parsers.html import AccountParserReviews
+from funpay.parsers.html import FunpayUserReviewsParser
 from .base import BaseService
 
 if TYPE_CHECKING:
@@ -29,5 +29,6 @@ class ReviewsService(BaseService):
 
         """
 
-        reviews = await self.client.request(parser=AccountParserReviews).fetch_user_data(self.account.id)
+        html = await self.client.request.fetch_users_page(self.account.id)
+        reviews = FunpayUserReviewsParser(html).parse()
         return reviews

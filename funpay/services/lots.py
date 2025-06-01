@@ -2,11 +2,12 @@ from typing import TYPE_CHECKING
 
 import asyncio
 
-from funpay.parsers.html import AccountParserNodes, AccountParserLots, LotsTradeParserGameData
+from funpay.parsers.html import FunpayUserNodeIdsParser, FunpayUserLotsParser, FunpayLotGameIdParser
+from funpay.parsers.json import RaiseNodeParser
 from .base import BaseService
 
 if TYPE_CHECKING:
-    from funpay.types import Lot
+    from funpay.types import Lot, RaiseNode
 
 
 class LotsService(BaseService):
@@ -30,30 +31,56 @@ class LotsService(BaseService):
 
         """
 
-        lots = await self.client.request(parser=AccountParserLots).fetch_user_data(self.account.id)
+        html = await self.client.request.fetch_users_page(self.account.id)
+        lots = FunpayUserLotsParser(html).parse()
         return lots
 
-    async def up(self) -> dict:
-        """Performs bump (up) operation for all available lots.
+    async def up(self) -> list['RaiseNode']:
+        """Performs a batch 'raise' (bump) operation for all available user lots/nodes.
+
+        This method automates the process of bumping multiple listings on FunPay by:
+        1. Fetching all user's node IDs from their profile
+        2. Processing each node individually to:
+           - Extract required game_id from the trade page
+           - Send raise request to the API
+        3. Returning structured results for each operation
 
         Workflow:
-        1. Fetches user's lots page
-        2. Extracts all lot node IDs
-        3. Sends bump request for each lot category
-        4. Returns operation statuses
+            1. Fetch user's profile page HTML
+            2. Parse all node IDs where lots can be raised
+            3. For each node:
+                a. Load its trade page HTML
+                b. Extract game_id from the page
+                c. Submit raise request via API
+                d. Parse and store the result
+            4. Return aggregated results
 
         Returns:
-            dict[str, str]: Mapping of node IDs to operation results
-            Example: {'123': '1', '456': '0'}
+            list[RaiseNode]
+
+        Raises:
+            HttpRequestError: If any API request fails (status >= 400)
+            ParserError: If HTML parsing fails for game_id extraction
+
+        Note:
+            - Uses asyncio.gather for concurrent processing
+            - Each node is processed independently
+            - Failed operations don't stop the batch (exceptions are caught)
         """
+        async def process_node_up(node_id: str) -> 'RaiseNode':
+            html = await self.client.request.fetch_lots_trade_page(node_id)
+            game_id = FunpayLotGameIdParser(html).parse()
 
-        async def process_node(node_id: str) -> None:
-            game_id = await self.client.request(parser=LotsTradeParserGameData).fetch_lots_trade_data(node_id)
-            data = await self.client.request().send_raise_request(game_id, node_id)
+            data = await self.client.request.send_raise(
+                game_id=game_id,
+                node_id=node_id
+            )
+            data['node_id'] = node_id
 
-            return data
+            return RaiseNodeParser(data).parse()
 
-        nodes = await self.client.request(parser=AccountParserNodes).fetch_user_data(self.account.id)
-        results = await asyncio.gather(*[process_node(node) for node in nodes])
+        users_html = await self.client.request.fetch_users_page(self.account.id)
+        nodes = FunpayUserNodeIdsParser(users_html).parse()
 
+        results = await asyncio.gather(*[process_node_up(node) for node in nodes])
         return results

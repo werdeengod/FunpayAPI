@@ -1,12 +1,7 @@
-from typing import Type, TYPE_CHECKING, Optional
-
 import aiohttp
 
 from .base_client import BaseClient
 from .request import Request
-
-if TYPE_CHECKING:
-    from funpay.parsers import ABCParser
 
 
 class AioHttpClient(BaseClient[aiohttp.ClientSession]):
@@ -22,5 +17,6 @@ class AioHttpClient(BaseClient[aiohttp.ClientSession]):
         if self.session:
             await self.session.close()
 
-    def request(self, *, parser: Optional[Type['ABCParser']] = None) -> 'Request':
-        return Request[aiohttp.ClientResponse](self, parser)
+    @property
+    def request(self) -> 'Request':
+        return Request[aiohttp.ClientResponse](self)

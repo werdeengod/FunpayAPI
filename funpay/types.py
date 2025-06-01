@@ -25,6 +25,13 @@ class Lot:
 
 
 @dataclass(frozen=True)
+class RaiseNode:
+    node_id: str
+    message: str
+    success: bool
+
+
+@dataclass(frozen=True)
 class Review:
     username: str
     order_code: str
@@ -33,3 +40,14 @@ class Review:
 
     def __str__(self):
         return f"{self.username}: {self.text}"
+
+
+@dataclass(frozen=True)
+class Message:
+    id: int
+    chat_id: int
+    content: str
+    author_id: int
+
+    def __str__(self) -> str:
+        return self.content
