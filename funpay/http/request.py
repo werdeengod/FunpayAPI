@@ -189,3 +189,23 @@ class Request(Generic[T]):
         data = await response.json()
         return data
 
+    async def fetch_order_update(self, account_id, last_order_event_tag: str, csrf_token: str):
+        orders = {
+            "type": "orders_counters",
+            "id": account_id,
+            "tag": last_order_event_tag,
+            "data": False
+        }
+
+        response = await self._send_request(
+            method="POST",
+            url='/runner/',
+            data={
+                "objects": json.dumps(orders),
+                "request": False,
+                "csrf_token": csrf_token
+            }
+        )
+
+        return await response.json()
+

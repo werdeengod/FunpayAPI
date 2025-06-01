@@ -15,7 +15,7 @@ A simple yet powerful Python library for interacting with FunPay (funpay.com) ma
 
 ## Quick Start
 
-### Using Context Manager (Recommended)
+### Using Context Manager
 ```python
 from funpay import FunpayAPI
 
@@ -38,4 +38,16 @@ async def main():
     funpay = await FunpayAPI(golden_key).login()
     lots = await funpay.lots.get()
     print(f"Found {len(lots)} active lots")
+```
+
+### Using decorator for get updates
+```python
+from funpay import FunpayAPI
+
+golden_key = "your_auth_key_here"
+funpay = FunpayAPI(golden_key)
+
+@funpay.order_listener
+async def order_listener(update: dict):
+    print(update)
 ```

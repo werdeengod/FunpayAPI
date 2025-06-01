@@ -1,7 +1,9 @@
-from typing import Optional, TYPE_CHECKING, Union
+import asyncio
+from typing import Optional, TYPE_CHECKING, Union, Callable, Awaitable
 
 from funpay.http import AioHttpClient, BaseClient
 from funpay.services import LotsService, ReviewsService, ChatService
+from funpay.runner import Runner
 from funpay.parsers.html import FunpayUserProfileParser
 
 if TYPE_CHECKING:
@@ -84,5 +86,21 @@ class FunpayAPI:
     async def message_listener(self):
         pass
 
-    async def order_listener(self):
-        pass
+    def order_listener(self, func: Callable[..., Awaitable]):
+        async def wrapper(*args, **kwargs):
+            while True:
+                if not self._account:
+                    html = await self._client.request.fetch_main_page()
+                    self._account = FunpayUserProfileParser(html).parse()
+
+                runner = Runner(self._account, self._client)
+                get_updates = await runner.get_order_update()
+
+                if get_updates.get('objects'):
+                    await func(*args, *kwargs, update=get_updates)
+
+                await asyncio.sleep(6)
+
+        return wrapper
+
+
