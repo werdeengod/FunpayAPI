@@ -54,13 +54,5 @@ class BaseHtmlParser(ABCParser):
         if found := element.select_one(selector):
             return to_type(found.text.strip())
 
-    def parse(self) -> Any:
-        """Parses HTML content into domain objects (abstract).
-
-        Note:
-            Concrete subclasses must implement this method
-
-        Raises:
-            NotImplementedError: If not implemented by subclass
-        """
+    def _parse_implementation(self, **kwargs) -> Any:
         raise NotImplementedError

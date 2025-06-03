@@ -1,8 +1,7 @@
-from typing import TypeVar, Generic, Type, Optional, TYPE_CHECKING
+from typing import TypeVar, Generic, TYPE_CHECKING
 from abc import ABC, abstractmethod
 
 if TYPE_CHECKING:
-    from funpay.parsers import ABCParser
     from .request import Request
 
 
@@ -57,9 +56,6 @@ class BaseClient(ABC, Generic[T]):
 
         Implementations should return a properly configured Request handler
         with the specified parser.
-
-        Args:
-            parser: Optional parser class for automatic response processing
 
         Returns:
             Request: Configured request handler instance

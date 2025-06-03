@@ -1,5 +1,9 @@
-from typing import Optional
+from typing import Optional, TYPE_CHECKING
 from dataclasses import dataclass
+
+if TYPE_CHECKING:
+    from funpay.enums import Locale
+    import datetime
 
 
 @dataclass(frozen=True)
@@ -7,6 +11,7 @@ class Account:
     id: int
     csrf_token: str
     username: str
+    locale: 'Locale'
     balance: Optional[int] = None
 
     def __str__(self):
@@ -15,7 +20,8 @@ class Account:
 
 @dataclass(frozen=True)
 class Lot:
-    node_id: int
+    id: int
+    node: 'Node'
     title: str
     price: float
     amount: Optional[int] = None
@@ -26,9 +32,15 @@ class Lot:
 
 @dataclass(frozen=True)
 class RaiseNode:
-    node_id: str
+    node: 'Node'
     message: str
     success: bool
+
+
+@dataclass(frozen=True)
+class Node:
+    id: int
+    name: str
 
 
 @dataclass(frozen=True)
@@ -48,6 +60,14 @@ class Message:
     chat_id: int
     content: str
     author_id: int
+    date: 'datetime.datetime'
 
     def __str__(self) -> str:
         return self.content
+
+
+@dataclass(frozen=True)
+class Chat:
+    id: int
+    interlocutor_id: str
+    messages: list['Message']

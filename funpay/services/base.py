@@ -20,21 +20,3 @@ class BaseService:
     def __init__(self, account: 'Account', client: 'AioHttpClient'):
         self._account = account
         self._client = client
-
-    @property
-    def client(self) -> 'AioHttpClient':
-        """Provides access to the HTTP client.
-
-        Returns:
-            AioHttpClient: The async HTTP client instance.
-        """
-        return self._client
-
-    @property
-    def account(self) -> 'Account':
-        """Provides access to the authenticated account.
-
-        Returns:
-            Account: The user account associated with this service.
-        """
-        return self._account

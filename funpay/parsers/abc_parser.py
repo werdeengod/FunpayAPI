@@ -1,6 +1,8 @@
 from typing import Any
 from abc import ABC, abstractmethod
 
+from .exceptions import ParseError
+
 
 class ABCParser(ABC):
     """Abstract base class defining the interface for all response parsers.
@@ -22,16 +24,31 @@ class ABCParser(ABC):
         """
         pass
 
-    @abstractmethod
-    def parse(self) -> Any:
+    def parse(self, **kwargs) -> Any:
         """Transforms raw data into domain objects.
-
-        This method must be implemented by all concrete subclasses.
 
         Returns:
             Any: Parsed data in domain-specific format
 
         Raises:
             ParserError: If input data cannot be parsed
+        """
+        try:
+            return self._parse_implementation(**kwargs)
+        except NotImplementedError:
+            raise
+
+        except Exception as e:
+            raise ParseError(f"Failed to parse content: {str(e)}") from e
+
+    @abstractmethod
+    def _parse_implementation(self, **kwargs) -> Any:
+        """Parses HTML content into domain objects (abstract).
+
+        Note:
+            Concrete subclasses must implement this method
+
+        Raises:
+            NotImplementedError: If not implemented by subclass
         """
         pass

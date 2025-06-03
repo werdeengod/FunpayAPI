@@ -3,7 +3,7 @@ from .base_json_parser import BaseJsonParser
 
 
 class MessageParser(BaseJsonParser):
-    def parse(self) -> 'Message':
+    def _parse_implementation(self) -> 'Message':
         objects = self.data.get('objects')
 
         if not objects:
@@ -28,5 +28,3 @@ class MessageParser(BaseJsonParser):
             content=content,
             author_id=author_id
         )
-
-

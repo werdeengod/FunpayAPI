@@ -48,22 +48,35 @@ class FunpayAPI:
 
     @property
     def account(self) -> Union['Account', None]:
+        """Provides access to the authenticated account.
+
+        Returns:
+            Account: The user account associated with this service.
+        """
         return self._account
 
     @property
     def client(self) -> Union['BaseClient', None]:
+        """Provides access to the HTTP client.
+
+        Returns:
+            BaseClient: The async HTTP client instance.
+        """
         return self._client
 
     @property
     def lots(self) -> 'LotsService':
+        """Service for managing FunPay lots"""
         return LotsService(self._account, self._client)
 
     @property
     def reviews(self) -> 'ReviewsService':
+        """Service for comprehensive review management on FunPay"""
         return ReviewsService(self._account, self._client)
 
     @property
     def chat(self) -> 'ChatService':
+        """Service for managing chat operations and message handling"""
         return ChatService(self._account, self._client)
 
     async def login(self) -> 'FunpayAPI':
@@ -90,8 +103,7 @@ class FunpayAPI:
         async def wrapper(*args, **kwargs):
             while True:
                 if not self._account:
-                    html = await self._client.request.fetch_main_page()
-                    self._account = FunpayUserProfileParser(html).parse()
+                    await self.login()
 
                 runner = Runner(self._account, self._client)
                 get_updates = await runner.get_order_update()

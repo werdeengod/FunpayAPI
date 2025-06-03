@@ -11,12 +11,11 @@ async def up_lots():
 
 async def get_lots():
     async with FunpayAPI(golden_key) as funpay:
-        lots = await funpay.lots.get()
+        lots = await funpay.lots.all()
         print(lots)
 
 
 async def get_reviews():
     async with FunpayAPI(golden_key) as funpay:
-        reviews = await funpay.reviews.get()
+        reviews = await funpay.reviews.all()
         print(reviews)
-

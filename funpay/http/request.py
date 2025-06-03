@@ -114,7 +114,7 @@ class Request(Generic[T]):
         return await response.text()
 
     async def fetch_lots_trade_page(self, node_id: int) -> str:
-        """Fetch trading page HTML content for specific lot.
+        """Fetch trading page HTML content for specific node.
 
         Args:
             node_id: Trading node identifier
@@ -151,7 +151,7 @@ class Request(Generic[T]):
         data = await response.json()
         return data
 
-    async def send_message(self, chat_id: str | int, text: str, csrf_token: str) -> bool:
+    async def send_message(self, chat_id: str | int, text: str, csrf_token: str) -> dict:
         """Send message to specified chat.
 
         Args:
@@ -189,7 +189,7 @@ class Request(Generic[T]):
         data = await response.json()
         return data
 
-    async def fetch_order_update(self, account_id, last_order_event_tag: str, csrf_token: str):
+    async def fetch_order_update(self, account_id, last_order_event_tag: str, csrf_token: str) -> dict:
         orders = {
             "type": "orders_counters",
             "id": account_id,
@@ -209,3 +209,19 @@ class Request(Generic[T]):
 
         return await response.json()
 
+    async def fetch_chat_page(self, chat_id: int) -> dict:
+        """Fetch chat page HTML content for specific chat.
+
+        Args:
+            chat_id: Chat identifier
+
+        Returns:
+            Raw HTML content as string
+        """
+        response = await self._send_request(
+            method="GET",
+            url="/chat/",
+            params={"node": chat_id}
+        )
+
+        return await response.text()

@@ -5,9 +5,9 @@ from funpay.parsers import ABCParser
 
 class BaseJsonParser(ABCParser):
     def __init__(self, data: dict | list):
-        super().__init__()
+        super().__init__(data)
         self.data = data
 
-    def parse(self) -> Any:
+    def _parse_implementation(self, **kwargs) -> Any:
         raise NotImplementedError
     
