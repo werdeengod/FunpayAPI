@@ -24,6 +24,3 @@ class Runner:
 
     async def get_message_update(self) -> dict:
         pass
-
-    async def parse_order_update(self, update: dict):
-        pass

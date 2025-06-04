@@ -2,13 +2,12 @@ from typing import TYPE_CHECKING, Optional
 
 import asyncio
 
-from funpay.parsers.html import FunpayUserLotsParser, FunpayLotGameIdParser, \
-    FunpayLotNodeParser
-from funpay.parsers.json import RaiseNodeParser
+from funpay.parsers.html import FunpayUserLotsHtmlParser, FunpayGamesHtmlParser
+from funpay.parsers.json import RaiseNodeJsonParser
 from .base import BaseService
 
 if TYPE_CHECKING:
-    from funpay.types import Lot, RaiseNode, Node
+    from funpay.types import Lot, RaiseNode, Game
 
 
 class LotsService(BaseService):
@@ -18,13 +17,12 @@ class LotsService(BaseService):
     - Retrieve current user's lots
     - Perform lot bumping (up) operations
     - Track operation statuses
-
     """
     async def all(self, *, node_id: Optional[int] = None) -> list['Lot']:
         """Retrieves all active lots for the authenticated user.
 
         Args:
-            node_id: Optional filter to return only lots from specific category node
+            node_id: Optional filter to return only lots from specific node
 
         Returns:
             list[Lot]: Collection of parsed lot objects:
@@ -38,16 +36,15 @@ class LotsService(BaseService):
 
         """
         html = await self._client.request.fetch_users_page(self._account.id)
-        lots = FunpayUserLotsParser(html).parse(node_id=node_id)
+        lots = FunpayUserLotsHtmlParser(html).parse(node_id=node_id)
 
         return lots
 
-    async def get(self, *, lot_id: int, node_id: Optional[int] = None) -> 'Lot':
+    async def get(self, *, lot_id: int) -> 'Lot':
         """Retrieves active lot for the authenticated user.
 
         Args:
             lot_id: Unique identifier of the target listing
-            node_id: Optional node identifier for additional validation
 
         Returns:
             Single Lot object matching the criteria
@@ -57,36 +54,27 @@ class LotsService(BaseService):
             ParserError: When critical HTML parsing fails
 
         Note:
-            - When node_id is provided, verifies the lot belongs to specified node
             - More efficient than manual filtering after all() for single-item lookups
         """
         lots = await self.all()
 
         return next(
-            lot for lot in lots
-            if lot.id == lot_id and (not node_id or lot.node.id == node_id)
+            (lot for lot in lots
+             if lot.id == lot_id),
+            None
         )
 
-    async def get_node(self, node_id: str) -> 'Node':
-        """Retrieves node
+    async def _get_game_from_node_id(self, node_id: int) -> 'Game':
+        """Returns the Game containing the specified node_id with O(n) complexity."""
 
-        Args:
-            node_id: Target node identifier
+        html = await self._client.request.fetch_main_page()
+        games = FunpayGamesHtmlParser(html).parse()
 
-        Returns:
-            Node object
-
-        Raises:
-            HttpRequestError: For API communication failures (status >= 400)
-            ParserError: When critical HTML parsing fails
-
-        Raises:
-            HttpRequestError: For API communication failures (status >= 400)
-            ParserError: When critical HTML parsing fails
-        """
-        html = await self._client.request.fetch_lots_trade_page(node_id)
-        node = FunpayLotNodeParser(html).parse()
-        return node
+        return next(
+            (game for game in games
+             if any(node.id == node_id for node in game.nodes)),
+            None
+        )
 
     async def up(self) -> list['RaiseNode']:
         """Executes bulk bump/raise operation for all eligible marketplace listings.
@@ -105,22 +93,20 @@ class LotsService(BaseService):
 
         Note:
             - Operations are executed concurrently using asyncio.gather
-            - Individual failures don't interrupt the batch process
-            - Includes automatic rate limiting and retry logic
-            - Results contain detailed success/failure information per node
         """
-        async def process_node_up(lot: 'Lot') -> 'RaiseNode':
-            html = await self._client.request.fetch_lots_trade_page(lot.node.id)
-            game_id = FunpayLotGameIdParser(html).parse()
 
+        async def process_node_up(lot: 'Lot') -> 'RaiseNode':
+            game = await self._get_game_from_node_id(lot.node.id)
             data = await self._client.request.send_raise(
-                game_id=game_id,
+                game_id=game.id,
                 node_id=lot.node.id
             )
 
-            return RaiseNodeParser(data).parse(node=lot.node)
+            return RaiseNodeJsonParser(data).parse(node=lot.node)
 
-        lots = await self.all()
-        results = await asyncio.gather(*[process_node_up(lot) for lot in lots])
+        results = await asyncio.gather(*[
+            process_node_up(lot)
+            for lot in await self.all()
+        ])
 
         return results

@@ -1,8 +1,6 @@
 from typing import TYPE_CHECKING, Optional
 
-from funpay.parsers.json import MessageParser
-from funpay.parsers.html import ChatParser
-
+from funpay.parsers.json import RunnerMessageJsonParser, ChatJsonParser
 from .base import BaseService
 
 if TYPE_CHECKING:
@@ -32,12 +30,6 @@ class ChatService(BaseService):
             HttpRequestError: For API communication failures (status >= 400)
             ParserError: When critical HTML parsing fails
 
-        Workflow:
-            1. Validates input parameters
-            2. Submits message through client API
-            3. Parses server response into Message object
-            4. Returns structured message data
-
         Note:
             - Automatically includes required CSRF token from account
             - Message content should be plain text (no HTML formatting)
@@ -48,9 +40,20 @@ class ChatService(BaseService):
             csrf_token=self._account.csrf_token
         )
 
-        return MessageParser(data).parse()
+        message = RunnerMessageJsonParser(data).parse(
+            locale=self._account.locale,
+            author_id=self._account.id
+        )
 
-    async def history(self, chat_id: int, *, since_date: Optional['datetime.datetime'] = None) -> 'Chat':
+        return message
+
+    async def get_history(
+        self,
+        chat_id: int,
+        *,
+        last_message_id: Optional[int] = 99999999999999999,
+        since_date: Optional['datetime.datetime'] = None
+    ) -> 'Chat':
         """Retrieves chat message history with optional date filtering.
 
         Args:
@@ -58,6 +61,7 @@ class ChatService(BaseService):
             since_date: Optional cutoff date for historical messages
                 - When provided, only returns messages newer than this date
                 - When None, returns full available history
+            last_message_id: ID of the message from which to start the history (FunPay filter).
 
         Returns:
             Chat: Complete chat object with messages and metadata
@@ -70,9 +74,15 @@ class ChatService(BaseService):
             - Results are parsed according to account's locale settings
             - Pagination is handled automatically by the client
         """
-        html = await self._client.request.fetch_chat_page(chat_id=chat_id)
+        data = await self._client.request.fetch_chat_history(
+            chat_id=chat_id,
+            last_message=last_message_id
+        )
 
-        chat = ChatParser(html).parse(
+        if not data:
+            return
+
+        chat = ChatJsonParser(data).parse(
             locale=self._account.locale,
             since_date=since_date
         )

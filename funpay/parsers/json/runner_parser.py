@@ -1,9 +1,16 @@
+import datetime
+
 from funpay.types import Message
+from funpay.parsers.html import MessageHtmlParser
+from funpay.enums import Locale
+
 from .base_json_parser import BaseJsonParser
 
 
-class MessageParser(BaseJsonParser):
-    def _parse_implementation(self) -> 'Message':
+class RunnerMessageJsonParser(BaseJsonParser):
+    """Parser for get message from link https://funpay.com/runner/"""
+
+    def _parse_implementation(self, locale: 'Locale', author_id: int) -> 'Message':
         objects = self.data.get('objects')
 
         if not objects:
@@ -18,13 +25,10 @@ class MessageParser(BaseJsonParser):
 
         chat_id = data['node']['id']
         last_message = data['messages'][-1]
-        author_id = last_message['author']
-        message_id = last_message['id']
-        content = last_message['content']
 
-        return Message(
-            id=message_id,
+        return MessageHtmlParser(last_message['html']).parse(
             chat_id=chat_id,
-            content=content,
+            locale=locale,
+            date=datetime.datetime.now(tz=datetime.timezone.utc),
             author_id=author_id
         )

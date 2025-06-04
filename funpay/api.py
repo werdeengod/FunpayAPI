@@ -4,7 +4,7 @@ from typing import Optional, TYPE_CHECKING, Union, Callable, Awaitable
 from funpay.http import AioHttpClient, BaseClient
 from funpay.services import LotsService, ReviewsService, ChatService
 from funpay.runner import Runner
-from funpay.parsers.html import FunpayUserProfileParser
+from funpay.parsers.html import FunpayAccountHtmlParser
 
 if TYPE_CHECKING:
     from funpay.types import Account
@@ -36,8 +36,8 @@ class FunpayAPI:
 
     def __init__(self, golden_key: Optional[str] = None, *, client: Optional['BaseClient'] = None):
         self.golden_key = golden_key
-
         self._client = client if client else AioHttpClient(golden_key)
+
         self._account = None
 
     async def __aenter__(self) -> 'FunpayAPI':
@@ -56,28 +56,28 @@ class FunpayAPI:
         return self._account
 
     @property
-    def client(self) -> Union['BaseClient', None]:
-        """Provides access to the HTTP client.
-
-        Returns:
-            BaseClient: The async HTTP client instance.
-        """
-        return self._client
-
-    @property
     def lots(self) -> 'LotsService':
         """Service for managing FunPay lots"""
-        return LotsService(self._account, self._client)
+        return LotsService(
+            account=self.account,
+            client=self._client
+        )
 
     @property
     def reviews(self) -> 'ReviewsService':
         """Service for comprehensive review management on FunPay"""
-        return ReviewsService(self._account, self._client)
+        return ReviewsService(
+            account=self.account,
+            client=self._client
+        )
 
     @property
     def chat(self) -> 'ChatService':
         """Service for managing chat operations and message handling"""
-        return ChatService(self._account, self._client)
+        return ChatService(
+            account=self.account,
+            client=self._client
+        )
 
     async def login(self) -> 'FunpayAPI':
         """Authenticates the user and initializes account data.
@@ -92,8 +92,7 @@ class FunpayAPI:
         """
 
         html = await self._client.request.fetch_main_page()
-        self._account = FunpayUserProfileParser(html).parse()
-
+        self._account = FunpayAccountHtmlParser(html).parse()
         return self
 
     async def message_listener(self):

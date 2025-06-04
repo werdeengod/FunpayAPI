@@ -1,6 +1,6 @@
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING, Optional, Literal
 
-from funpay.parsers.html import FunpayUserReviewsParser
+from funpay.parsers.html import FunpayUserReviewsHtmlParser
 from .base import BaseService
 
 if TYPE_CHECKING:
@@ -33,17 +33,10 @@ class ReviewsService(BaseService):
         Raises:
             HttpRequestError: For API communication failures (status >= 400)
             ParserError: When critical HTML parsing fails
-
-        Workflow:
-            1. Fetches complete user profile HTML
-            2. Extracts and parses review data
-            3. Applies username filter if provided
-            4. Returns structured review objects
-
         """
 
         html = await self._client.request.fetch_users_page(self._account.id)
-        reviews = FunpayUserReviewsParser(html).parse(username=username)
+        reviews = FunpayUserReviewsHtmlParser(html).parse(username=username)
 
         return reviews
 
@@ -59,16 +52,66 @@ class ReviewsService(BaseService):
         Raises:
             HttpRequestError: For API communication failures (status >= 400)
             ParserError: When critical HTML parsing fails
-
-        Raises:
-            StopIteration: When no matching review is found
         """
         reviews = await self.all()
         review = next((review for review in reviews if order_code == review.order_code))
         return review
 
-    async def send_review(self):
-        pass
+    async def send(self, text: str, *, order_code: str, rating: Literal[1, 2, 3, 4, 5] = 5) -> str:
+        """Submits a new / edit review for a completed order.
 
-    async def delete_review(self):
-        pass
+        This method handles the complete review submission process including:
+        - Validation of review content
+        - Rating assignment
+        - Authentication via CSRF token
+        - API request execution
+
+        Args:
+            text: Review content text
+            order_code: Unique identifier of the order being reviewed
+            rating: Star rating (1-5), defaults to 5 (highest)
+                - 1: Very dissatisfied
+                - 2: Dissatisfied
+                - 3: Neutral
+                - 4: Satisfied
+                - 5: Very satisfied
+
+        Returns:
+            str: content review
+        Raises:
+            HttpRequestError: For API failures (status >= 400)
+        """
+        data = await self._client.request.send_review(
+            author_id=self._account.id,
+            text=text,
+            order_code=order_code,
+            rating=rating,
+            csrf_token=self._account.csrf_token
+        )
+
+        return data
+
+    async def delete(self, *, order_code: str) -> str:
+        """Permanently removes a submitted review.
+
+        Handles review deletion workflow including:
+        - Ownership verification (author_id match)
+        - CSRF-protected deletion request
+        - System confirmation
+
+        Args:
+            order_code: The order code associated with review to delete
+
+        Returns:
+            str: content review
+
+        Raises:
+            HttpRequestError: For API communication failures
+        """
+        data = await self._client.request.delete_review(
+            author_id=self._account.id,
+            order_code=order_code,
+            csrf_token=self._account.csrf_token
+        )
+
+        return data

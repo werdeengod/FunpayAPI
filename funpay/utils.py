@@ -3,13 +3,15 @@ import random
 import datetime
 import re
 
+from funpay.enums import Locale
+
 
 def random_tag() -> str:
     return "".join(random.choice(string.digits + string.ascii_lowercase) for _ in range(10))
 
 
-def get_number_month(locale: str, month: str) -> int:
-    if locale == "ru":
+def get_number_month(locale: 'Locale', month: str) -> int:
+    if locale == Locale.RU:
         months = {
             "января": 1,
             "февраля": 2,
@@ -44,7 +46,7 @@ def get_number_month(locale: str, month: str) -> int:
     return months[month]
 
 
-def string_to_datetime(locale: str, datetime_string: str) -> datetime.datetime:
+def string_to_datetime(locale: 'Locale', datetime_string: str) -> datetime.datetime:
     now = datetime.datetime.now(tz=datetime.timezone.utc)
 
     pattern = r"""
@@ -75,6 +77,7 @@ def string_to_datetime(locale: str, datetime_string: str) -> datetime.datetime:
         year=year or now.year,
         day=int(day),
         month=get_number_month(locale, month),
+        hour=int(hour),
         minute=int(minute),
         second=int(second)
     )

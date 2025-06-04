@@ -5,6 +5,7 @@ from fake_useragent import FakeUserAgent
 from aiocache import cached
 
 from funpay.http.exceptions import HttpRequestError
+from funpay.enums import ResponseType
 
 if TYPE_CHECKING:
     from funpay.http import BaseClient
@@ -25,15 +26,9 @@ class Request(Generic[T]):
     def __init__(self, client: 'BaseClient'):
         self.client = client
 
-    def _get_headers(self, method: Literal["POST", "GET"]) -> dict:
-        """Generate appropriate HTTP headers for the request method.
+    def _get_headers(self, response_type: 'ResponseType') -> dict:
+        """Generate appropriate HTTP headers for the request method."""
 
-        Args:
-            method: HTTP method ("POST" or "GET")
-
-        Returns:
-            Dictionary containing complete headers for the request
-        """
         base_headers = {
             "User-Agent": FakeUserAgent().random,
             "Cookie": f"golden_key={self.client.golden_key}",
@@ -41,7 +36,7 @@ class Request(Generic[T]):
             "Connection": "keep-alive"
         }
 
-        if method.upper() == "POST":
+        if response_type == ResponseType.JSON:
             base_headers.update({
                 "Content-Type": "application/x-www-form-urlencoded",
                 "X-Requested-With": "XMLHttpRequest",
@@ -51,27 +46,39 @@ class Request(Generic[T]):
 
         return base_headers
 
-    @cached(ttl=10)
-    async def _send_request(self, method: Literal["POST", "GET"], url: str, **kwargs: dict) -> T:
-        """Low-level method to send HTTP requests with caching (10 second TTL).
+    async def _send_request(
+        self,
+        *,
+        method: Literal["POST", "GET"],
+        url: str,
+        response_type: 'ResponseType',
+        **kwargs: dict
+    ) -> T:
+        """Core method for sending HTTP requests with built-in error handling.
+
+        Handles:
+        - Session management
+        - Header injection
+        - Error response detection
+        - Request execution
 
         Args:
-            method: HTTP method ("POST" or "GET")
-            url: Endpoint URL (relative to client's BASE_URL)
-            **kwargs: Additional arguments for the request
+            method: HTTP verb ("POST" or "GET")
+            url: Endpoint path (relative to base URL)
+            **kwargs: Additional arguments for aiohttp request
 
         Returns:
-            Response object of type T
+            The response object (type depends on caller's processing)
 
         Raises:
-            HttpRequestError: If response status is 400 or higher
+            HttpRequestError: For any 4xx/5xx status code responses
         """
         session = self.client.get_session()
 
         response = await session.request(
             method=method,
             url=url,
-            headers=self._get_headers(method),
+            headers=self._get_headers(response_type),
             **kwargs
         )
 
@@ -84,64 +91,84 @@ class Request(Generic[T]):
 
         return response
 
+    @cached(ttl=3600)
     async def fetch_main_page(self) -> str:
-        """Fetch the main page HTML content.
+        """Retrieves the platform's main page HTML content.
+
+        Note:
+            - Heavily cached (1 hour TTL) as this data rarely changes
+            - Contains essential site structure and metadata
 
         Returns:
-            Raw HTML content as string
+            Raw HTML string of the main landing page
         """
         response = await self._send_request(
             method='GET',
-            url='/'
+            url='/',
+            response_type=ResponseType.TEXT
         )
 
         return await response.text()
 
+    @cached(ttl=30)
     async def fetch_users_page(self, account_id: int) -> str:
-        """Fetch user profile page HTML content.
+        """Fetches user profile page HTML by account ID.
 
         Args:
-            account_id: Target user's account ID
+            account_id: Unique platform identifier for target user
 
         Returns:
-            Raw HTML content as string
+            HTML content string containing:
+            - User profile information
+            - Review data
+            - Listing information
         """
         response = await self._send_request(
             method="GET",
-            url=f'/users/{account_id}/'
+            url=f'/users/{account_id}/',
+            response_type=ResponseType.TEXT
         )
 
         return await response.text()
 
-    async def fetch_lots_trade_page(self, node_id: int) -> str:
-        """Fetch trading page HTML content for specific node.
+    @cached(ttl=30)
+    async def fetch_lots_page(self, game_id: int) -> str:
+        """Retrieves lots page HTML for specific marketplace node.
 
         Args:
-            node_id: Trading node identifier
+            game_id: Unique category/node identifier
 
         Returns:
-            Raw HTML content as string
+            HTML string with:
+            - Lot listings
+            - Trading rules
+            - Node-specific metadata
         """
         response = await self._send_request(
             method="GET",
-            url=f'/lots/{node_id}/trade'
+            url=f'/lots/{game_id}/',
+            response_type=ResponseType.TEXT
         )
 
         return await response.text()
 
     async def send_raise(self, game_id: str, node_id: str) -> dict:
-        """Submit a raise/up request for a trading lot.
+        """Submits a bump/raise request for marketplace listings.
 
         Args:
             game_id: Game session identifier
-            node_id: Trading node identifier
+            node_id: Target marketplace node ID
 
         Returns:
-            JSON response from server as dictionary
+            API response containing:
+            - Operation status
+            - Updated listing data
+            - Cooldown information
         """
         response = await self._send_request(
             method='POST',
             url='/lots/raise',
+            response_type=ResponseType.JSON,
             data={
                 "game_id": game_id,
                 "node_id": node_id
@@ -179,17 +206,31 @@ class Request(Generic[T]):
         response = await self._send_request(
             method="POST",
             url="/runner/",
+            response_type=ResponseType.JSON,
             data={
                 "objects": json.dumps(objects),
                 "request": json.dumps(request),
                 "csrf_token": csrf_token
-            }
+            },
         )
 
         data = await response.json()
         return data
 
     async def fetch_order_update(self, account_id, last_order_event_tag: str, csrf_token: str) -> dict:
+        """Checks for order status updates.
+
+        Args:
+            account_id: Authenticated user's ID
+            last_order_event_tag: Previous update marker
+            csrf_token: Current CSRF token
+
+        Returns:
+            Order update payload containing:
+            - New events
+            - Status changes
+            - Counter updates
+        """
         orders = {
             "type": "orders_counters",
             "id": account_id,
@@ -200,28 +241,83 @@ class Request(Generic[T]):
         response = await self._send_request(
             method="POST",
             url='/runner/',
+            response_type=ResponseType.JSON,
             data={
                 "objects": json.dumps(orders),
                 "request": False,
                 "csrf_token": csrf_token
-            }
+            },
         )
 
         return await response.json()
 
-    async def fetch_chat_page(self, chat_id: int) -> dict:
-        """Fetch chat page HTML content for specific chat.
+    async def send_review(self, author_id: int, text: str, rating: int, csrf_token: str, order_code: str) -> str:
+        """Submits review for completed order.
 
         Args:
-            chat_id: Chat identifier
+            author_id: Reviewer's account ID
+            text: Review content
+            rating: Numeric rating (typically 1-5)
+            csrf_token: Current CSRF token
+            order_code: Associated order ID
 
         Returns:
-            Raw HTML content as string
+
         """
         response = await self._send_request(
-            method="GET",
-            url="/chat/",
-            params={"node": chat_id}
+            method="POST",
+            url='/orders/review',
+            response_type=ResponseType.JSON,
+            data={
+                "authorId": author_id,
+                "text": text,
+                "rating": rating,
+                "csrf_token": csrf_token,
+                "orderId": order_code
+            }
         )
 
-        return await response.text()
+        data = await response.json()
+        return data.get("content")
+
+    async def delete_review(self, author_id: int, order_code: str, csrf_token: str) -> str:
+        """Removes previously submitted review.
+
+        Args:
+            author_id: Reviewer's account ID
+            order_code: Original order ID
+            csrf_token: Current CSRF token
+
+        Returns:
+
+        """
+        response = await self._send_request(
+            method="POST",
+            url="/orders/reviewDelete",
+            response_type=ResponseType.JSON,
+            data={
+                "authorId": author_id,
+                "csrf_token": csrf_token,
+                "orderId": order_code
+            }
+        )
+
+        data = await response.json()
+        return data.get("content")
+
+    async def fetch_chat_history(self, chat_id: int, last_message: int) -> dict | None:
+        response = await self._send_request(
+            method="GET",
+            url=f"/chat/history",
+            response_type=ResponseType.JSON,
+            params={
+                "node": chat_id,
+                "last_message": last_message
+            }
+        )
+
+        data = await response.json()
+        chat = data.get("chat")
+
+        if isinstance(chat, dict):
+            return chat

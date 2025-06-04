@@ -7,15 +7,19 @@ if TYPE_CHECKING:
 
 
 @dataclass(frozen=True)
-class Account:
+class User:
     id: int
-    csrf_token: str
     username: str
-    locale: 'Locale'
-    balance: Optional[int] = None
 
     def __str__(self):
         return self.username
+
+
+@dataclass(frozen=True)
+class Account(User):
+    csrf_token: str
+    locale: 'Locale'
+    balance: Optional[int] = None
 
 
 @dataclass(frozen=True)
@@ -41,6 +45,13 @@ class RaiseNode:
 class Node:
     id: int
     name: str
+
+
+@dataclass(frozen=True)
+class Game:
+    id: int
+    name: str
+    nodes: list['Node']
 
 
 @dataclass(frozen=True)

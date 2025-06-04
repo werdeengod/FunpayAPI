@@ -7,7 +7,9 @@ if TYPE_CHECKING:
     from funpay.types import Node
 
 
-class RaiseNodeParser(BaseJsonParser):
+class RaiseNodeJsonParser(BaseJsonParser):
+    """Parser to retrieve raised nodes from link https://funpay.com/lots/raise"""
+
     def _parse_implementation(self, node: 'Node') -> 'RaiseNode':
         return RaiseNode(
             node=node,

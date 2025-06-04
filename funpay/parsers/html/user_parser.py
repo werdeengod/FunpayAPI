@@ -1,38 +1,20 @@
 from typing import TYPE_CHECKING, Optional
-import json
 
-from funpay.enums import Locale
-from funpay.types import Account, Lot, Review, Node
+from funpay.types import Lot, Review, Node
 from .base_html_parser import BaseHtmlParser
 
 if TYPE_CHECKING:
     from bs4 import Tag
 
 
-class FunpayUserProfileParser(BaseHtmlParser):
-    def _extract_account_data(self) -> dict:
-        return json.loads(self.soup.find("body")["data-app-data"])
-
-    def _extract_account_username(self) -> str:
-        return self.get_text(self.soup, "div.user-link-name")
-
-    def _extract_balance(self) -> int | None:
-        balance = self.get_text(self.soup, "span.badge.badge-balance", to_type=int)
-        return balance
-
-    def _parse_implementation(self) -> 'Account':
-        data = self._extract_account_data()
-
-        return Account(
-            id=int(data['userId']),
-            csrf_token=data['csrf-token'],
-            username=self._extract_account_username(),
-            balance=self._extract_balance(),
-            locale=Locale(data['locale'])
-        )
+class FunpayUserProfileHtmlParser(BaseHtmlParser):
+    """Parser for get profile from link https://funpay.com/users/{USER_ID}/"""
+    pass
 
 
-class FunpayUserLotsParser(BaseHtmlParser):
+class FunpayUserLotsHtmlParser(BaseHtmlParser):
+    """Parser for get lots from link https://funpay.com/users/{USER_ID}/"""
+
     def _extract_offer_container(self) -> list['Tag']:
         return self.soup.find_all("div", {"class": "offer"})
 
@@ -72,7 +54,9 @@ class FunpayUserLotsParser(BaseHtmlParser):
         return lots
 
 
-class FunpayUserReviewsParser(BaseHtmlParser):
+class FunpayUserReviewsHtmlParser(BaseHtmlParser):
+    """Parser for get reviews from link https://funpay.com/users/{USER_ID}/"""
+
     def _extract_reviews_container(self) -> list['Tag']:
         return self.soup.find_all("div", {"class": "review-container"})
 
