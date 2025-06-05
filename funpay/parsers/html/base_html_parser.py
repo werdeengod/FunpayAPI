@@ -30,7 +30,7 @@ class BaseHtmlParser(ABCParser):
         super().__init__(html)
         self.html = html
 
-    @cached_property
+    @property
     def soup(self) -> 'BeautifulSoup':
         """BeautifulSoup document representation (cached).
 

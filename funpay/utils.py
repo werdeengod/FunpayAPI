@@ -3,7 +3,7 @@ import random
 import datetime
 import re
 
-from funpay.enums import Locale
+from funpay.enums import Locale, StatusOrder
 
 
 def random_tag() -> str:
@@ -47,23 +47,29 @@ def get_number_month(locale: 'Locale', month: str) -> int:
 
 
 def string_to_datetime(locale: 'Locale', datetime_string: str) -> datetime.datetime:
+    def format_time(data: str) -> int:
+        return int(data[1] if len(data) == 2 and data[0] == "0" else data)
+
     now = datetime.datetime.now(tz=datetime.timezone.utc)
 
     pattern = r"""
-        (\d{1,2})          # Day (1-2 digits)
-        \s+                # One or more whitespace characters
-        ([а-яё]+)          # Month name (Russian letters)
-        \s*                # Optional whitespace
-        (?:                # Non-capturing group for year
-            (\d{4})        # Year (4 digits)
-            ,?             # Optional comma
-        )?                 # Year is optional
-        \s*                # Optional whitespace
-        ,?                 # Optional comma
-        \s*                # Optional whitespace
-        (\d{1,2}):         # Hours (1-2 digits)
-        (\d{2}):           # Minutes (2 digits)
-        (\d{2})            # Seconds (2 digits)
+        (\d{1,2})                  # Day (1-2 digits)
+        \s+                        # Whitespace
+        ([а-яёa-z]+)               # Month name (Russian or English)
+        \s*                        # Optional whitespace
+        (?:                        # Optional year
+            (\d{4})                # Year (4 digits)
+            \s*                    # Optional whitespace
+        )?
+        \s*                        # Optional whitespace
+        (?:в|at|,\s*)              # "в", "at" or comma with optional space
+        \s*                        # Optional whitespace
+        (\d{1,2})                  # Hours (1-2 digits)
+        :                          # Colon
+        (\d{2})                    # Minutes (2 digits)
+        (?:                        # Optional seconds
+            :(\d{2})               # Seconds (2 digits)
+        )?
     """
 
     match_search = re.search(pattern, datetime_string, re.VERBOSE)
@@ -77,8 +83,26 @@ def string_to_datetime(locale: 'Locale', datetime_string: str) -> datetime.datet
         year=year or now.year,
         day=int(day),
         month=get_number_month(locale, month),
-        hour=int(hour),
-        minute=int(minute),
-        second=int(second)
+        hour=format_time(hour),
+        minute=format_time(minute),
+        second=format_time(second) if second else 0
     )
 
+
+def get_order_status_from_string(locale: 'Locale', status_string: str):
+    if locale == Locale.RU:
+        statuses = {
+            "Закрыт": StatusOrder.CLOSED,
+            "Оплачен": StatusOrder.PAID,
+            "Возврат": StatusOrder.REFUNDED
+        }
+
+    else:
+        statuses = {
+            "Closed": StatusOrder.CLOSED,
+            "Paid": StatusOrder.PAID,
+            "Refund": StatusOrder.REFUNDED
+        }
+
+    status = statuses.get(status_string)
+    return status

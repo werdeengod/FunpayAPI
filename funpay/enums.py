@@ -1,4 +1,4 @@
-from enum import StrEnum
+from enum import StrEnum, IntEnum
 
 
 class Locale(StrEnum):
@@ -9,3 +9,14 @@ class Locale(StrEnum):
 class ResponseType(StrEnum):
     JSON = "json"
     TEXT = "text"
+
+
+class StatusOrder(IntEnum):
+    PAID = 0
+    CLOSED = 1
+    REFUNDED = 2
+
+
+class OrderType(IntEnum):
+    PURCHASE = 0
+    SALE = 1

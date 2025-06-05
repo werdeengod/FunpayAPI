@@ -2,12 +2,12 @@ from typing import Optional, TYPE_CHECKING
 from dataclasses import dataclass
 
 if TYPE_CHECKING:
-    from funpay.enums import Locale
+    from funpay.enums import Locale, StatusOrder, OrderType
     import datetime
 
 
 @dataclass(frozen=True)
-class User:
+class UserCut:
     id: int
     username: str
 
@@ -16,7 +16,14 @@ class User:
 
 
 @dataclass(frozen=True)
-class Account(User):
+class User(UserCut):
+    created_date: 'datetime.datetime'
+    banned: bool
+    last_online: 'datetime.datetime'
+
+
+@dataclass(frozen=True)
+class Account(UserCut):
     csrf_token: str
     locale: 'Locale'
     balance: Optional[int] = None
@@ -56,13 +63,13 @@ class Game:
 
 @dataclass(frozen=True)
 class Review:
-    username: str
+    user_id: int
     order_code: str
     date: str
     text: str
 
     def __str__(self):
-        return f"{self.username}: {self.text}"
+        return f"{self.user_id}: {self.text}"
 
 
 @dataclass(frozen=True)
@@ -82,3 +89,22 @@ class Chat:
     id: int
     interlocutor_id: str
     messages: list['Message']
+
+
+@dataclass(frozen=True)
+class OrderCut:
+    id: str
+    title: str
+    status: 'StatusOrder'
+    price: float
+    start_date: 'datetime.datetime'
+    order_type: Optional['OrderType']
+    user: 'UserCut'
+
+
+@dataclass(frozen=True)
+class Order(OrderCut):
+    end_date: 'datetime.datetime'
+    description: str
+    node: 'Node'
+

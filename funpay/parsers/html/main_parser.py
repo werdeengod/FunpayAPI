@@ -11,7 +11,9 @@ if TYPE_CHECKING:
 
 
 class FunpayGamesHtmlParser(BaseHtmlParser):
-    """Parser for get all games from link: https://funpay.com/"""
+    """Parser for get all games from link:
+       - https://funpay.com/
+    """
 
     def _extract_promo_game_list(self) -> 'Tag':
         return self.soup.find("div", {"class": "promo-game-list"})
@@ -56,7 +58,9 @@ class FunpayGamesHtmlParser(BaseHtmlParser):
 
 
 class FunpayAccountHtmlParser(BaseHtmlParser):
-    """Parser for get account data from link: https://funpay.com/"""
+    """Parser for get account data from link:
+       - https://funpay.com/
+    """
 
     def _extract_account_data(self) -> dict:
         return json.loads(self.soup.find("body")["data-app-data"])

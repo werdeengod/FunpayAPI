@@ -12,7 +12,7 @@ if TYPE_CHECKING:
 
 
 class MessageHtmlParser(BaseHtmlParser):
-    """Parser for get message from link https://funpay.com/chat/?node={CHAT_ID}"""
+    """Parser for get message from raw html string"""
 
     def _extract_message_container(self) -> 'Tag':
         return self.soup.find("div", {"class": "chat-msg-item"})

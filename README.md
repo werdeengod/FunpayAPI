@@ -47,7 +47,7 @@ from funpay import FunpayAPI
 golden_key = "your_auth_key_here"
 funpay = FunpayAPI(golden_key)
 
-@funpay.order_listener
-async def order_listener(update: dict):
+@funpay.runner.listener
+async def funpay_listener(update: dict):
     print(update)
 ```

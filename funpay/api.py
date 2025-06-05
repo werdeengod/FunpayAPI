@@ -1,8 +1,7 @@
-import asyncio
-from typing import Optional, TYPE_CHECKING, Union, Callable, Awaitable
+from typing import Optional, TYPE_CHECKING, Union
 
 from funpay.http import AioHttpClient, BaseClient
-from funpay.services import LotsService, ReviewsService, ChatService
+from funpay.services import LotsService, ReviewsService, ChatService, OrdersService
 from funpay.runner import Runner
 from funpay.parsers.html import FunpayAccountHtmlParser
 
@@ -56,19 +55,31 @@ class FunpayAPI:
         return self._account
 
     @property
+    def client(self) -> 'BaseClient':
+        return self._client
+
+    @property
     def lots(self) -> 'LotsService':
         """Service for managing FunPay lots"""
         return LotsService(
             account=self.account,
-            client=self._client
+            client=self.client
         )
 
     @property
     def reviews(self) -> 'ReviewsService':
-        """Service for comprehensive review management on FunPay"""
+        """Service for managing FunPay reviews"""
         return ReviewsService(
             account=self.account,
-            client=self._client
+            client=self.client
+        )
+
+    @property
+    def orders(self) -> 'OrdersService':
+        """Service for managing FunPay orders"""
+        return OrdersService(
+            account=self.account,
+            client=self.client
         )
 
     @property
@@ -76,8 +87,12 @@ class FunpayAPI:
         """Service for managing chat operations and message handling"""
         return ChatService(
             account=self.account,
-            client=self._client
+            client=self.client
         )
+
+    @property
+    def runner(self) -> 'Runner':
+        return Runner(self)
 
     async def login(self) -> 'FunpayAPI':
         """Authenticates the user and initializes account data.
@@ -94,24 +109,3 @@ class FunpayAPI:
         html = await self._client.request.fetch_main_page()
         self._account = FunpayAccountHtmlParser(html).parse()
         return self
-
-    async def message_listener(self):
-        pass
-
-    def order_listener(self, func: Callable[..., Awaitable]):
-        async def wrapper(*args, **kwargs):
-            while True:
-                if not self._account:
-                    await self.login()
-
-                runner = Runner(self._account, self._client)
-                get_updates = await runner.get_order_update()
-
-                if get_updates.get('objects'):
-                    await func(*args, *kwargs, update=get_updates)
-
-                await asyncio.sleep(6)
-
-        return wrapper
-
-

@@ -118,10 +118,9 @@ class Request(Generic[T]):
             account_id: Unique platform identifier for target user
 
         Returns:
-            HTML content string containing:
-            - User profile information
-            - Review data
-            - Listing information
+            str: Raw HTML content
+        Note:
+            Results are cached for 30 seconds to prevent excessive requests.
         """
         response = await self._send_request(
             method="GET",
@@ -139,10 +138,10 @@ class Request(Generic[T]):
             game_id: Unique category/node identifier
 
         Returns:
-            HTML string with:
-            - Lot listings
-            - Trading rules
-            - Node-specific metadata
+            str: Raw HTML content
+
+        Note:
+            Results are cached for 30 seconds to prevent excessive requests.
         """
         response = await self._send_request(
             method="GET",
@@ -217,8 +216,8 @@ class Request(Generic[T]):
         data = await response.json()
         return data
 
-    async def fetch_order_update(self, account_id, last_order_event_tag: str, csrf_token: str) -> dict:
-        """Checks for order status updates.
+    async def fetch_updates(self, account_id: int, last_order_event_tag: str, csrf_token: str) -> dict:
+        """Checks for updates.
 
         Args:
             account_id: Authenticated user's ID
@@ -262,7 +261,7 @@ class Request(Generic[T]):
             order_code: Associated order ID
 
         Returns:
-
+            str: Raw HTML content
         """
         response = await self._send_request(
             method="POST",
@@ -289,7 +288,7 @@ class Request(Generic[T]):
             csrf_token: Current CSRF token
 
         Returns:
-
+            str: Raw HTML content
         """
         response = await self._send_request(
             method="POST",
@@ -306,6 +305,15 @@ class Request(Generic[T]):
         return data.get("content")
 
     async def fetch_chat_history(self, chat_id: int, last_message: int) -> dict | None:
+        """Retrieves the chat history for a specific conversation.
+
+        Args:
+            chat_id: The unique identifier of the chat.
+            last_message: ID of the last known message to fetch newer messages.
+
+        Returns:
+            dict | None: The chat history data as a dictionary, or None if no chat found.
+        """
         response = await self._send_request(
             method="GET",
             url=f"/chat/history",
@@ -321,3 +329,89 @@ class Request(Generic[T]):
 
         if isinstance(chat, dict):
             return chat
+
+    @cached(ttl=5)
+    async def fetch_purchases_page(self) -> str:
+        """Fetches the HTML content of the user's purchases page.
+
+        Returns:
+            str: Raw HTML content of the purchases page.
+
+        Note:
+            Results are cached for 5 seconds to prevent excessive requests.
+        """
+        response = await self._send_request(
+            method="GET",
+            url="/orders/",
+            response_type=ResponseType.TEXT
+        )
+
+        return await response.text()
+
+    @cached(ttl=5)
+    async def fetch_sales_page(self) -> str:
+        """Fetches the HTML content of the user's sales page.
+
+        Returns:
+            str: Raw HTML content of the sales page.
+
+        Note:
+            Results are cached for 5 seconds to prevent excessive requests.
+        """
+        response = await self._send_request(
+            method="GET",
+            url="/orders/trade",
+            response_type=ResponseType.TEXT
+        )
+
+        return await response.text()
+
+    @cached(ttl=3600)
+    async def fetch_order_page(self, order_code: str) -> str:
+        """Fetches the HTML content of a specific order page.
+
+        Args:
+            order_code: The unique identifier of the order.
+
+        Returns:
+            str: Raw HTML content of the order details page.
+
+        Note:
+            Results are cached for 1 hour (3600 seconds) as order details don't change frequently.
+        """
+        response = await self._send_request(
+            method="GET",
+            url=f"/orders/{order_code}/",
+            response_type=ResponseType.TEXT
+        )
+
+        return await response.text()
+
+    async def send_refund(self, order_code: str, csrf_token: str) -> None:
+        """Sends a refund request to FunPay servers.
+
+        Args:
+            order_code: The unique identifier of the order to refund.
+            csrf_token: Current CSRF token from the user session.
+
+        Raises:
+            HttpRequestError: If the server returns an error response.
+        """
+        response = await self._send_request(
+            method="POST",
+            url='/orders/refund',
+            response_type=ResponseType.JSON,
+            data={
+                "id": order_code,
+                "csrf_token": csrf_token
+            }
+        )
+
+        data = await response.json()
+
+        if data.get('error'):
+            raise HttpRequestError(
+                status=200,
+                url='/orders/refund',
+                text=data.get('msg')
+            )

@@ -1,6 +1,6 @@
 from typing import TYPE_CHECKING, Optional, Literal
 
-from funpay.parsers.html import FunpayUserReviewsHtmlParser
+from funpay.parsers.html import FunpayUserReviewsHtmlParser, ReviewHtmlParser
 from .base import BaseService
 
 if TYPE_CHECKING:
@@ -16,11 +16,11 @@ class ReviewsService(BaseService):
     - Review deletion (WIP)
     - Review analysis and statistics
     """
-    async def all(self, *, username: Optional[str] = None) -> list['Review']:
+    async def all(self, *, only_user_id: Optional[int] = None) -> list['Review']:
         """Retrieves reviews with optional username filtering.
 
         Args:
-            username: Optional filter to return only reviews from specific user
+            only_user_id: Optional filter to return only reviews from specific user
                      Case-insensitive comparison
 
         Returns:
@@ -36,7 +36,7 @@ class ReviewsService(BaseService):
         """
 
         html = await self._client.request.fetch_users_page(self._account.id)
-        reviews = FunpayUserReviewsHtmlParser(html).parse(username=username)
+        reviews = FunpayUserReviewsHtmlParser(html).parse(only_user_id=only_user_id)
 
         return reviews
 
@@ -54,10 +54,16 @@ class ReviewsService(BaseService):
             ParserError: When critical HTML parsing fails
         """
         reviews = await self.all()
-        review = next((review for review in reviews if order_code == review.order_code))
+
+        review = next(
+            (review for review in reviews
+             if order_code == review.order_code),
+            None
+        )
+
         return review
 
-    async def send(self, text: str, *, order_code: str, rating: Literal[1, 2, 3, 4, 5] = 5) -> str:
+    async def send(self, text: str, *, order_code: str, rating: Literal[1, 2, 3, 4, 5] = 5) -> 'Review':
         """Submits a new / edit review for a completed order.
 
         This method handles the complete review submission process including:
@@ -77,11 +83,11 @@ class ReviewsService(BaseService):
                 - 5: Very satisfied
 
         Returns:
-            str: content review
+            Review: content review
         Raises:
             HttpRequestError: For API failures (status >= 400)
         """
-        data = await self._client.request.send_review(
+        html = await self._client.request.send_review(
             author_id=self._account.id,
             text=text,
             order_code=order_code,
@@ -89,9 +95,10 @@ class ReviewsService(BaseService):
             csrf_token=self._account.csrf_token
         )
 
-        return data
+        review = ReviewHtmlParser(html).parse()
+        return review
 
-    async def delete(self, *, order_code: str) -> str:
+    async def delete(self, *, order_code: str) -> bool:
         """Permanently removes a submitted review.
 
         Handles review deletion workflow including:
@@ -103,15 +110,15 @@ class ReviewsService(BaseService):
             order_code: The order code associated with review to delete
 
         Returns:
-            str: content review
+            bool: success operation
 
         Raises:
             HttpRequestError: For API communication failures
         """
-        data = await self._client.request.delete_review(
+        await self._client.request.delete_review(
             author_id=self._account.id,
             order_code=order_code,
             csrf_token=self._account.csrf_token
         )
 
-        return data
+        return True
