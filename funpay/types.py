@@ -19,7 +19,7 @@ class UserCut:
 class User(UserCut):
     created_date: 'datetime.datetime'
     banned: bool
-    last_online: 'datetime.datetime'
+    last_online: Optional['datetime.datetime']
 
 
 @dataclass(frozen=True)

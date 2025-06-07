@@ -34,7 +34,7 @@ class ChatService(BaseService):
             - Automatically includes required CSRF token from account
             - Message content should be plain text (no HTML formatting)
         """
-        data = await self._client.request.send_message(
+        data = await self.client.request.send_message(
             chat_id=chat_id,
             text=text,
             csrf_token=self._account.csrf_token
@@ -74,7 +74,7 @@ class ChatService(BaseService):
             - Results are parsed according to account's locale settings
             - Pagination is handled automatically by the client
         """
-        data = await self._client.request.fetch_chat_history(
+        data = await self.client.request.fetch_chat_history(
             chat_id=chat_id,
             last_message=last_message_id
         )

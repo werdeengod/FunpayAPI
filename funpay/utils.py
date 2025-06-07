@@ -47,7 +47,10 @@ def get_number_month(locale: 'Locale', month: str) -> int:
 
 
 def string_to_datetime(locale: 'Locale', datetime_string: str) -> datetime.datetime:
-    def format_time(data: str) -> int:
+    def format_time(data: str | None) -> int:
+        if not data:
+            return 0
+
         return int(data[1] if len(data) == 2 and data[0] == "0" else data)
 
     now = datetime.datetime.now(tz=datetime.timezone.utc)
@@ -80,12 +83,12 @@ def string_to_datetime(locale: 'Locale', datetime_string: str) -> datetime.datet
     day, month, year, hour, minute, second = match_search.groups()
 
     return datetime.datetime(
-        year=year or now.year,
+        year=int(year) if year else now.year,
         day=int(day),
         month=get_number_month(locale, month),
         hour=format_time(hour),
         minute=format_time(minute),
-        second=format_time(second) if second else 0
+        second=format_time(second)
     )
 
 

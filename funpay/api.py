@@ -3,10 +3,10 @@ from typing import Optional, TYPE_CHECKING, Union
 from funpay.http import AioHttpClient, BaseClient
 from funpay.services import LotsService, ReviewsService, ChatService, OrdersService
 from funpay.runner import Runner
-from funpay.parsers.html import FunpayAccountHtmlParser
+from funpay.parsers.html import FunpayAccountHtmlParser, FunpayUserProfileHtmlParser
 
 if TYPE_CHECKING:
-    from funpay.types import Account
+    from funpay.types import Account, User
 
 
 class FunpayAPI:
@@ -35,7 +35,7 @@ class FunpayAPI:
 
     def __init__(self, golden_key: Optional[str] = None, *, client: Optional['BaseClient'] = None):
         self.golden_key = golden_key
-        self._client = client if client else AioHttpClient(golden_key)
+        self.client = client if client else AioHttpClient(golden_key)
 
         self._account = None
 
@@ -43,7 +43,7 @@ class FunpayAPI:
         return await self.login()
 
     async def __aexit__(self, exc_type, exc_val, exc_tb):
-        await self._client.session.close()
+        await self.client.session.close()
 
     @property
     def account(self) -> Union['Account', None]:
@@ -53,10 +53,6 @@ class FunpayAPI:
             Account: The user account associated with this service.
         """
         return self._account
-
-    @property
-    def client(self) -> 'BaseClient':
-        return self._client
 
     @property
     def lots(self) -> 'LotsService':
@@ -90,8 +86,7 @@ class FunpayAPI:
             client=self.client
         )
 
-    @property
-    def runner(self) -> 'Runner':
+    def get_runner(self) -> 'Runner':
         return Runner(self)
 
     async def login(self) -> 'FunpayAPI':
@@ -106,6 +101,16 @@ class FunpayAPI:
             FunpayAPI: Returns self for method chaining
         """
 
-        html = await self._client.request.fetch_main_page()
+        html = await self.client.request.fetch_main_page()
         self._account = FunpayAccountHtmlParser(html).parse()
         return self
+
+    async def get_user(self, user_id: int) -> 'User':
+        html = await self.client.request.fetch_users_page(user_id)
+
+        user = FunpayUserProfileHtmlParser(html).parse(
+            locale=self.account.locale,
+            user_id=user_id
+        )
+
+        return user

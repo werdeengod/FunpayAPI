@@ -1,4 +1,5 @@
 from typing import TYPE_CHECKING, Callable, Awaitable
+from functools import wraps
 import asyncio
 
 from funpay.utils import random_tag
@@ -7,31 +8,102 @@ if TYPE_CHECKING:
     from funpay import FunpayAPI
 
 
-class Runner:
+class _SingletonMeta(type):
+    _instance = None
+
+    def __call__(cls, *args, **kwargs):
+        if not cls._instance:
+            cls._instance = super().__call__(*args, **kwargs)
+
+        return cls._instance
+
+
+class Runner(metaclass=_SingletonMeta):
     def __init__(self, api: 'FunpayAPI'):
         self.api = api
+
+        self._listeners = {}
+        self._tasks = set[asyncio.Task]()
+        self._is_running = False
+        self._stop_event = asyncio.Event()
 
         self._last_message_event_tag = random_tag()
         self._last_order_event_tag = random_tag()
 
-    async def get_updates(self) -> dict:
-        return await self.api.client.request.fetch_updates(
+    async def _get_updates(self) -> dict:
+        updates = await self.api.client.request.fetch_updates(
             account_id=self.api.account.id,
             last_order_event_tag=self._last_order_event_tag,
+            last_message_event_tag=self._last_message_event_tag,
             csrf_token=self.api.account.csrf_token
         )
 
-    def listener(self, func: Callable[..., Awaitable]):
-        async def wrapper(*args, **kwargs):
-            while True:
-                if not self.api.account:
-                    await self.api.login()
+        events = []
+        for obj in updates['objects']:
+            if obj.get("type") == "chat_bookmarks":
+                self._last_message_event_tag = obj.get('tag')
 
-                get_updates = await self.get_updates()
+        return updates
 
-                if get_updates.get('objects'):
-                    await func(*args, *kwargs, update=get_updates)
+    def listener(self, event_name: str, *, interval: int = 6):
+        def decorator(func: Callable[..., Awaitable]):
+            @wraps(func)
+            async def wrapper():
+                while True:
+                    if not self.api.account:
+                        await self.api.login()
 
-                await asyncio.sleep(6)
+                    get_updates = await self._get_updates()
 
-        return wrapper
+                    if get_updates.get('objects'):
+                        await func(update=get_updates)
+
+                    await asyncio.sleep(interval)
+
+            self._listeners[event_name] = wrapper
+            return wrapper
+
+        return decorator
+
+    @staticmethod
+    async def _run_listener(listener: Callable[..., Awaitable]) -> None:
+        try:
+            await listener()
+        except asyncio.CancelledError:
+            return
+        except Exception as e:
+            raise e
+
+    async def start(self) -> None:
+        if self._is_running:
+            return
+
+        self._is_running = True
+
+        for listener in self._listeners.values():
+            loop = asyncio.get_event_loop()
+            task = loop.create_task(self._run_listener(listener))
+            self._tasks.add(task)
+
+    async def stop(self) -> None:
+        if not self._is_running:
+            return
+
+        self._is_running = False
+        self._stop_event.set()
+
+        for task in self._tasks:
+            task.cancel()
+
+        await asyncio.gather(*self._tasks, return_exceptions=True)
+        self._tasks.clear()
+
+    async def run_forever(self) -> None:
+        if self._is_running:
+            return
+
+        try:
+            await self.start()
+            await self._stop_event.wait()
+        except KeyboardInterrupt:
+            await self.stop()

@@ -216,12 +216,19 @@ class Request(Generic[T]):
         data = await response.json()
         return data
 
-    async def fetch_updates(self, account_id: int, last_order_event_tag: str, csrf_token: str) -> dict:
+    async def fetch_updates(
+        self,
+        account_id: int,
+        last_order_event_tag: str,
+        last_message_event_tag: str,
+        csrf_token: str
+    ) -> dict:
         """Checks for updates.
 
         Args:
             account_id: Authenticated user's ID
             last_order_event_tag: Previous update marker
+            last_message_event_tag: Previous update marker
             csrf_token: Current CSRF token
 
         Returns:
@@ -237,12 +244,19 @@ class Request(Generic[T]):
             "data": False
         }
 
+        chats = {
+            "type": "chat_bookmarks",
+            "id": account_id,
+            "tag": last_message_event_tag,
+            "data": False
+        }
+
         response = await self._send_request(
             method="POST",
             url='/runner/',
             response_type=ResponseType.JSON,
             data={
-                "objects": json.dumps(orders),
+                "objects": json.dumps([orders, chats]),
                 "request": False,
                 "csrf_token": csrf_token
             },

@@ -19,4 +19,4 @@ class BaseService:
 
     def __init__(self, account: 'Account', client: 'AioHttpClient'):
         self._account = account
-        self._client = client
+        self.client = client

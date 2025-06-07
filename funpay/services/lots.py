@@ -35,7 +35,7 @@ class LotsService(BaseService):
             Only returns currently active lots (not ended or hidden)
 
         """
-        html = await self._client.request.fetch_users_page(self._account.id)
+        html = await self.client.request.fetch_users_page(self._account.id)
         lots = FunpayUserLotsHtmlParser(html).parse(node_id=node_id)
 
         return lots
@@ -67,7 +67,7 @@ class LotsService(BaseService):
     async def _get_game_from_node_id(self, node_id: int) -> 'Game':
         """Returns the Game containing the specified node_id with O(n) complexity."""
 
-        html = await self._client.request.fetch_main_page()
+        html = await self.client.request.fetch_main_page()
         games = FunpayGamesHtmlParser(html).parse()
 
         return next(
@@ -97,7 +97,7 @@ class LotsService(BaseService):
 
         async def process_node_up(lot: 'Lot') -> 'RaiseNode':
             game = await self._get_game_from_node_id(lot.node.id)
-            data = await self._client.request.send_raise(
+            data = await self.client.request.send_raise(
                 game_id=game.id,
                 node_id=lot.node.id
             )

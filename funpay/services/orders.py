@@ -23,7 +23,7 @@ class OrdersService(BaseService):
         Returns:
             list[OrderCut]: A list of simplified order objects representing sales.
         """
-        html = await self._client.request.fetch_sales_page()
+        html = await self.client.request.fetch_sales_page()
 
         orders = FunpayOrdersCutHtmlParser(html).parse(
             locale=self._account.locale,
@@ -38,7 +38,7 @@ class OrdersService(BaseService):
         Returns:
             list[OrderCut]: A list of simplified order objects representing purchases.
         """
-        html = await self._client.request.fetch_purchases_page()
+        html = await self.client.request.fetch_purchases_page()
 
         orders = FunpayOrdersCutHtmlParser(html).parse(
             locale=self._account.locale,
@@ -56,7 +56,7 @@ class OrdersService(BaseService):
         Returns:
             Order: A complete order object with all available details.
         """
-        html = await self._client.request.fetch_order_page(order_code)
+        html = await self.client.request.fetch_order_page(order_code)
         order = FunpayOrderHtmlParser(html).parse(locale=self._account.locale)
         return order
 
@@ -72,7 +72,7 @@ class OrdersService(BaseService):
         Note:
             Requires a valid CSRF token from the active session.
         """
-        await self._client.request.send_refund(
+        await self.client.request.send_refund(
             order_code=order_code,
             csrf_token=self._account.csrf_token
         )

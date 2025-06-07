@@ -35,7 +35,7 @@ class ReviewsService(BaseService):
             ParserError: When critical HTML parsing fails
         """
 
-        html = await self._client.request.fetch_users_page(self._account.id)
+        html = await self.client.request.fetch_users_page(self._account.id)
         reviews = FunpayUserReviewsHtmlParser(html).parse(only_user_id=only_user_id)
 
         return reviews
@@ -87,7 +87,7 @@ class ReviewsService(BaseService):
         Raises:
             HttpRequestError: For API failures (status >= 400)
         """
-        html = await self._client.request.send_review(
+        html = await self.client.request.send_review(
             author_id=self._account.id,
             text=text,
             order_code=order_code,
@@ -115,7 +115,7 @@ class ReviewsService(BaseService):
         Raises:
             HttpRequestError: For API communication failures
         """
-        await self._client.request.delete_review(
+        await self.client.request.delete_review(
             author_id=self._account.id,
             order_code=order_code,
             csrf_token=self._account.csrf_token
