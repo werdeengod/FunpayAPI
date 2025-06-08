@@ -29,21 +29,21 @@ class ChatJsonParser(BaseJsonParser):
         interlocutor_id = int(node['name'].split('-')[1])
 
         messages_raw_list = self._extract_messages()
-        last_author_id, last_date = None, None
+        last_author, last_date = None, None
         messages = []
 
         for raw_message in messages_raw_list:
             message = MessageHtmlParser(raw_message['html']).parse(
                 chat_id=chat_id,
                 locale=locale,
-                author_id=last_author_id,
+                author=last_author,
                 date=last_date
             )
 
             if not message:
                 continue
 
-            last_date, last_author_id = message.date, message.author_id
+            last_date, last_author = message.date, message.author
             if since_date and since_date < message.date:
                 continue
 

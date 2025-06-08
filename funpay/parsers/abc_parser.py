@@ -1,5 +1,6 @@
 from typing import Any
 from abc import ABC, abstractmethod
+import logging
 
 from .exceptions import ParseError
 
@@ -13,7 +14,7 @@ class ABCParser(ABC):
 
     Note:
         - This is an abstract base class (ABC) - cannot be instantiated directly
-        - Designed to work with any response format (JSON, HTML, XML, etc.)
+        - Designed to work with any response format (JSON, HTML)
     """
     def __init__(self, *args, **kwargs):
         """Initializes the parser with optional arguments.
@@ -22,7 +23,7 @@ class ABCParser(ABC):
             *args: Variable length argument list
             **kwargs: Arbitrary keyword arguments
         """
-        pass
+        self.logger = logging.getLogger('funpay.Parser')
 
     def parse(self, **kwargs) -> Any:
         """Transforms raw data into domain objects.
@@ -34,6 +35,7 @@ class ABCParser(ABC):
             ParserError: If input data cannot be parsed
         """
         try:
+            self.logger.debug(f"class={self} data={kwargs}")
             return self._parse_implementation(**kwargs)
         except NotImplementedError:
             raise

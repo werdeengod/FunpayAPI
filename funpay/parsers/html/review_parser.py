@@ -1,6 +1,6 @@
 from typing import TYPE_CHECKING, Optional
 
-from funpay.types import Review
+from funpay.types import Review, UserCut
 from .base_html_parser import BaseHtmlParser
 
 if TYPE_CHECKING:
@@ -19,9 +19,13 @@ class ReviewHtmlParser(BaseHtmlParser):
         media_user_name = self._extract_media_user_name()
 
         if not media_user_name:
-            user_id = 0
+            user = UserCut(id=None, username=None)
         else:
-            user_id = int(media_user_name.find("a")['href'].split('/')[-2])
+            user_link = media_user_name.find("a")
+            user = UserCut(
+                id=int(user_link['href'].split('/')[-2]),
+                username=user_link.text.strip()
+            )
 
         order_code = review_container.get('data-order')
         if not order_code:
@@ -31,7 +35,7 @@ class ReviewHtmlParser(BaseHtmlParser):
         text = self.get_text(review_container, "div.review-item-text")
 
         return Review(
-            user_id=user_id,
+            user=user,
             order_code=order_code,
             date=date,
             text=text

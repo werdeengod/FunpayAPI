@@ -1,4 +1,5 @@
 from typing import TYPE_CHECKING, Literal, TypeVar, Generic
+import logging
 import json
 
 from fake_useragent import FakeUserAgent
@@ -24,6 +25,7 @@ class Request(Generic[T]):
         client: BaseClient instance providing session and authentication details
     """
     def __init__(self, client: 'BaseClient'):
+        self.logger = logging.getLogger('funpay.Request')
         self.client = client
 
     def _get_headers(self, response_type: 'ResponseType') -> dict:
@@ -80,6 +82,13 @@ class Request(Generic[T]):
             url=url,
             headers=self._get_headers(response_type),
             **kwargs
+        )
+
+        self.logger.info(
+            f"Method={method} "
+            f"Path={self.client.BASE_URL}{url} "
+            f"Status={response.status} "
+            f"Type={response_type.value}"
         )
 
         if response.status >= 400:

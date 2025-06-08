@@ -1,6 +1,6 @@
 from typing import TYPE_CHECKING, Optional
 
-from funpay.types import Message
+from funpay.types import Message, UserCut
 from funpay.utils import string_to_datetime
 
 from .base_html_parser import BaseHtmlParser
@@ -21,7 +21,7 @@ class MessageHtmlParser(BaseHtmlParser):
         self,
         chat_id: int,
         locale: 'Locale',
-        author_id: Optional[int] = None,
+        author: 'UserCut' = None,
         date: Optional['datetime.datetime'] = None
     ) -> 'Message':
 
@@ -45,12 +45,15 @@ class MessageHtmlParser(BaseHtmlParser):
                 return
 
             author_link = media_user_name.find("a")
-            author_id = int(author_link['href'].split('/')[-2])
+            author = UserCut(
+                id=int(author_link['href'].split('/')[-2]),
+                username=author_link.text.strip()
+            )
 
         return Message(
             id=message_id,
             content=content,
             date=date,
-            author_id=author_id,
+            author=author,
             chat_id=chat_id
         )

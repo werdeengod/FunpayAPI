@@ -8,8 +8,8 @@ if TYPE_CHECKING:
 
 @dataclass(frozen=True)
 class UserCut:
-    id: int
-    username: str
+    id: Optional[int]
+    username: Optional[str]
 
     def __str__(self):
         return self.username
@@ -63,13 +63,13 @@ class Game:
 
 @dataclass(frozen=True)
 class Review:
-    user_id: int
+    user: 'UserCut'
     order_code: str
     date: str
     text: str
 
     def __str__(self):
-        return f"{self.user_id}: {self.text}"
+        return f"{self.user}: {self.text}"
 
 
 @dataclass(frozen=True)
@@ -77,7 +77,7 @@ class Message:
     id: int
     chat_id: int
     content: str
-    author_id: int
+    author: 'UserCut'
     date: 'datetime.datetime'
 
     def __str__(self) -> str:
@@ -89,6 +89,13 @@ class Chat:
     id: int
     interlocutor_id: str
     messages: list['Message']
+
+
+@dataclass(frozen=True)
+class ChatCut:
+    id: int
+    interlocutor_id: str
+    last_message: 'Message'
 
 
 @dataclass(frozen=True)

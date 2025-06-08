@@ -20,3 +20,9 @@ class StatusOrder(IntEnum):
 class OrderType(IntEnum):
     PURCHASE = 0
     SALE = 1
+
+
+class EventType(StrEnum):
+    ORDER = "order"
+    CHAT = "chat"
+

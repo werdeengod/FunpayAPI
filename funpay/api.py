@@ -24,8 +24,8 @@ class FunpayAPI:
             a default Requester will be initialized.
 
     Attributes:
-        golden_key (str): Stored authentication key
-        _client (BaseClient): HTTP services for making requests
+        _golden_key (str): Stored authentication key
+        client (BaseClient): HTTP services for making requests
         _account (Optional[Account]): Cached account data
 
     Note:
@@ -34,7 +34,7 @@ class FunpayAPI:
     """
 
     def __init__(self, golden_key: Optional[str] = None, *, client: Optional['BaseClient'] = None):
-        self.golden_key = golden_key
+        self._golden_key = golden_key
         self.client = client if client else AioHttpClient(golden_key)
 
         self._account = None

@@ -1,8 +1,11 @@
 from typing import TYPE_CHECKING, Callable, Awaitable
 from functools import wraps
+import logging
 import asyncio
 
 from funpay.utils import random_tag
+from funpay.enums import EventType
+from .exceptions import ListenerError
 
 if TYPE_CHECKING:
     from funpay import FunpayAPI
@@ -21,14 +24,19 @@ class _SingletonMeta(type):
 class Runner(metaclass=_SingletonMeta):
     def __init__(self, api: 'FunpayAPI'):
         self.api = api
+        self.logging = logging.getLogger('funpay.Runner')
 
         self._listeners = {}
         self._tasks = set[asyncio.Task]()
         self._is_running = False
         self._stop_event = asyncio.Event()
 
+        self._first_request = True
         self._last_message_event_tag = random_tag()
         self._last_order_event_tag = random_tag()
+
+        self._saved_orders = []
+        self._last_messages = {}
 
     async def _get_updates(self) -> dict:
         updates = await self.api.client.request.fetch_updates(
@@ -41,14 +49,28 @@ class Runner(metaclass=_SingletonMeta):
         events = []
         for obj in updates['objects']:
             if obj.get("type") == "chat_bookmarks":
-                self._last_message_event_tag = obj.get('tag')
+                self._last_message_event_tag = obj.get('tag', random_tag())
+            elif obj.get("type") == "orders_counters":
+                self._last_order_event_tag = obj.get('tag', random_tag())
 
         return updates
 
-    def listener(self, event_name: str, *, interval: int = 6):
+    def listener(self, event_name: EventType | str, *, interval: int = 6):
+        if isinstance(event_name, str):
+            event_name = EventType(event_name)
+
+        if interval < 6:
+            raise ListenerError("The interval is too small. Must be >=6")
+
         def decorator(func: Callable[..., Awaitable]):
             @wraps(func)
             async def wrapper():
+                self.logging.info(
+                    f"SET Listener={func.__name__}() "
+                    f"Event={event_name} "
+                    f"Interval={interval}"
+                )
+
                 while True:
                     if not self.api.account:
                         await self.api.login()
@@ -56,6 +78,9 @@ class Runner(metaclass=_SingletonMeta):
                     get_updates = await self._get_updates()
 
                     if get_updates.get('objects'):
+                        if event_name == EventType.ORDER:
+                            pass
+
                         await func(update=get_updates)
 
                     await asyncio.sleep(interval)
